@@ -460,24 +460,25 @@ const Sound = (() => {
   function knock() {
     if (!init()) return;
     const t0 = ctx.currentTime + 0.05;
-    const send = ctx.createGain(); send.gain.value = 0.25; send.connect(verb);
+    const send = ctx.createGain(); send.gain.value = 0.12; send.connect(verb);
     [0, 0.32, 0.64].forEach(dt => {
       const t = t0 + dt;
-      // głuche uderzenie w drewno
-      const o = ctx.createOscillator(); o.type = "sine";
-      o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.12);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(1, t + 0.003); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-      o.connect(g); g.connect(master); g.connect(send);
-      o.start(t); o.stop(t + 0.25);
-      // stuknięcie knykcia
+      const b = 430 * (0.97 + Math.random() * 0.06), vel = 0.9 + Math.random() * 0.2;
+      // drgania deski: kilka nieharmonicznych modów, wyższe gasną szybciej
+      [[1, 1, 0.07], [1.58, 0.6, 0.05], [2.37, 0.4, 0.035], [3.21, 0.25, 0.025], [4.6, 0.15, 0.018]].forEach(([r, a, d]) => {
+        const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = b * r;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.35 * a * vel, t + 0.001); g.gain.setTargetAtTime(0, t + 0.001, d);
+        o.connect(g); g.connect(master); g.connect(send);
+        o.start(t); o.stop(t + 0.5);
+      });
+      // trzask knykcia o drewno
       const n = ctx.createBufferSource(); n.buffer = noiseBuf;
-      const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1100; bp.Q.value = 1.2;
-      const res = ctx.createBiquadFilter(); res.type = "peaking"; res.frequency.value = 430; res.Q.value = 6; res.gain.value = 14;
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 1500;
       const ng = ctx.createGain();
-      ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(0.8, t + 0.002); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-      n.connect(bp); bp.connect(res); res.connect(ng); ng.connect(master); ng.connect(send);
-      n.start(t); n.stop(t + 0.15);
+      ng.gain.setValueAtTime(0.6 * vel, t); ng.gain.setTargetAtTime(0, t, 0.004);
+      n.connect(hp); hp.connect(ng); ng.connect(master); ng.connect(send);
+      n.start(t); n.stop(t + 0.05);
     });
   }
   function toggle() { on = !on; if (!on && current) current.stop(); return on; }
