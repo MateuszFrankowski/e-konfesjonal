@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} body{margin:0} img{max-width:100%}</style>
+<title>e-Konfesjonał</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=UnifrakturMaguntia&display=swap">
+<style>
+/* Layout: jedna kolumna jak modlitewnik, krata konfesjonału w nagłówku, ciężar duszy przyklejony u dołu ekranu */
+:root {
+  --bg: #1a1024;
+  --panel: #241631;
+  --line: #3e2a50;
+  --fg: #f0e7da;
+  --muted: #b5a5c2;
+  --gold: #dcb865;
+  --wine: #b8344f;
+  --ok: #7cc796;
+  --paper: #efe4cf;
+  --ink: #2a1a33;
+  --f-display: "UnifrakturMaguntia", "Old English Text MT", Georgia, serif;
+  --f-body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 17px; line-height: 1.5; }
+.wrap { max-width: 760px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Nagłówek z kratą */
+.hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+.hero::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; opacity: .6;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 22px, var(--line) 22px 24px),
+    repeating-linear-gradient(-45deg, transparent 0 22px, var(--line) 22px 24px);
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent 90%);
+  mask-image: linear-gradient(to bottom, #000, transparent 90%);
+}
+.hero .wrap { position: relative; z-index: 1; padding-block: 44px 28px; display: grid; gap: 14px; }
+.parish { font-size: 13px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin: 0; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(52px, 12vw, 92px); line-height: .95; color: var(--gold); margin: 0; text-wrap: balance; }
+.lead { margin: 0; max-width: 54ch; font-size: 19px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.chip { font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+
+/* Kroki */
+.steps { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 0; margin: 26px 0 8px; font-size: 14px; color: var(--muted); }
+.steps li { display: flex; align-items: center; gap: 8px; }
+.steps b { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; font-family: var(--f-mono); font-weight: 500; font-size: 12px; }
+.steps li[aria-current="step"] { color: var(--fg); }
+.steps li[aria-current="step"] b { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+.steps li.done b { border-color: var(--gold); color: var(--gold); }
+
+h2 { font-family: var(--f-display); font-weight: 400; color: var(--gold); font-size: 40px; line-height: 1.1; margin: 22px 0 6px; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0 0 18px; max-width: 60ch; }
+
+.field { display: grid; gap: 6px; margin-bottom: 22px; }
+.field label, .cat legend { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+select, textarea {
+  font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; width: 100%; box-sizing: border-box;
+}
+textarea { min-height: 80px; resize: vertical; }
+select:focus-visible, textarea:focus-visible, input:focus-visible, .btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.cats { display: grid; gap: 26px; }
+.cat { border: 0; padding: 0; margin: 0; min-width: 0; }
+.cat legend { padding: 0 0 8px; }
+.sin { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: baseline; padding: 10px 12px; border-top: 1px solid var(--line); cursor: pointer; border-radius: 4px; }
+.cat .sin:last-of-type { border-bottom: 1px solid var(--line); }
+.sin:hover { background: var(--panel); }
+.sin input { accent-color: var(--gold); width: 18px; height: 18px; margin: 0; transform: translateY(3px); }
+.sin .t { min-width: 0; }
+.sin .g { font-family: var(--f-mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sin:has(input:checked) { background: var(--panel); }
+.sin:has(input:checked) .g { color: var(--gold); }
+.note { font-size: 14px; color: var(--muted); font-style: italic; margin: 8px 0 0; }
+.note.alarm { color: var(--wine); font-style: normal; font-weight: 700; }
+
+/* Pasek ciężaru duszy */
+.bar {
+  position: sticky; bottom: 0; z-index: 5; background: var(--bg); border-top: 1px solid var(--line);
+  margin-top: 28px; padding-block: 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+}
+.meter { flex: 1 1 260px; min-width: 0; display: grid; gap: 6px; }
+.meter-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.weight { font-family: var(--f-mono); font-size: 22px; font-weight: 500; color: var(--gold); font-variant-numeric: tabular-nums; }
+.level { font-size: 14px; color: var(--muted); text-align: right; }
+.track { height: 8px; border-radius: 4px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
+.fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), var(--wine)); transition: width .35s ease; }
+
+.btn { font: inherit; font-weight: 700; font-size: 16px; cursor: pointer; border-radius: 6px; padding: 12px 20px; border: 1px solid var(--gold); background: var(--gold); color: var(--bg); }
+.btn:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .5; cursor: progress; }
+.btn.ghost { background: transparent; color: var(--gold); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Przelew */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 20px; display: grid; gap: 18px; }
+.transfer { display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; margin: 0; }
+.transfer dt { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding-top: 2px; }
+.transfer dd { margin: 0; font-family: var(--f-mono); font-size: 14.5px; min-width: 0; overflow-wrap: anywhere; }
+.slider { display: grid; gap: 6px; }
+.slider label { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.slider output { font-family: var(--f-mono); color: var(--gold); }
+input[type="range"] { width: 100%; accent-color: var(--gold); }
+.zal-hint { font-size: 14px; color: var(--muted); font-style: italic; }
+.log { list-style: none; margin: 0; padding: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; font-family: var(--f-mono); font-size: 13.5px; display: grid; gap: 6px; min-height: 40px; }
+.log li { display: grid; grid-template-columns: auto 1fr; gap: 8px; }
+.log li::before { content: "›"; color: var(--gold); }
+.log li.ok { color: var(--ok); }
+.log li.warn { color: var(--wine); }
+
+/* Pokuta i rozgrzeszenie */
+.penance { list-style: none; padding: 0; margin: 0 0 24px; display: grid; gap: 10px; }
+.penance li { display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.penance li::before { content: "✝"; color: var(--gold); font-size: 18px; line-height: 1.3; }
+.cert { position: relative; background: var(--paper); color: var(--ink); border-radius: 4px; padding: 28px 24px 24px; display: grid; gap: 10px; box-shadow: 0 0 0 6px var(--panel), 0 0 0 7px var(--gold); margin: 8px 7px 24px; }
+.cert h3 { font-family: var(--f-display); font-weight: 400; font-size: 38px; margin: 0; line-height: 1; padding-right: 110px; }
+.cert .no { font-family: var(--f-mono); font-size: 13px; margin: 0; }
+.cert p { margin: 0; max-width: 58ch; }
+.cert .sign { font-style: italic; margin-top: 6px; }
+.stamp {
+  position: absolute; top: 18px; right: 16px; width: 104px; height: 104px; border-radius: 50%;
+  border: 4px double var(--wine); color: var(--wine); display: grid; place-items: center; text-align: center;
+  font-family: var(--f-mono); font-weight: 500; font-size: 11px; letter-spacing: .06em; line-height: 1.25; transform: rotate(-14deg);
+  animation: stamp .45s cubic-bezier(.2, 1.6, .4, 1) both .3s;
+}
+.stamp strong { font-size: 12.5px; display: block; }
+@keyframes stamp { from { transform: rotate(-14deg) scale(2.4); opacity: 0; } to { transform: rotate(-14deg) scale(1); opacity: 1; } }
+.upsell { border: 1px dashed var(--gold); border-radius: 6px; padding: 12px 14px; color: var(--muted); font-size: 15px; margin: 0 0 20px; }
+.upsell b { color: var(--gold); }
+footer { color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--line); margin-top: 40px; padding-block: 18px 32px; }
+
+@media (max-width: 480px) {
+  .transfer { grid-template-columns: 1fr; gap: 2px; }
+  .transfer dd { margin-bottom: 10px; }
+  .cert h3 { font-size: 32px; padding-right: 0; padding-top: 70px; }
+  .stamp { width: 88px; height: 88px; font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot, .stamp { animation: none; }
+  .fill { transition: none; }
+}
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="parish">Parafia Online pw. św. Wi-Fi z Łącza</p>
+    <h1>e-Konfesjonał</h1>
+    <p class="lead">Spowiedź bez kolejki, bez kratki i bez patrzenia proboszczowi w oczy. Zaznacz grzechy, przelej je do Nieba, odbierz pokutę.</p>
+    <div class="chips">
+      <span class="chip"><span class="dot"></span>Ksiądz online (lekko zaspany)</span>
+      <span class="chip">Kolejka: 0 osób</span>
+      <span class="chip">Szyfrowanie SSL: Święty Sakrament Lokalny</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <ol class="steps" id="steps">
+    <li data-step="1" aria-current="step"><b>1</b>Rachunek sumienia</li>
+    <li data-step="2"><b>2</b>Przelew grzechów</li>
+    <li data-step="3"><b>3</b>Pokuta</li>
+  </ol>
+
+  <!-- KROK 1 -->
+  <section id="s1">
+    <h2>Rachunek sumienia</h2>
+    <p class="sub">Zaznacz wszystko, co masz na sumieniu. Dwie pozycje zaznaczyliśmy z góry. Wiemy.</p>
+
+    <div class="field">
+      <label for="last">Ostatnia spowiedź</label>
+      <select id="last">
+        <option value="1">Tydzień temu, jestem wzorowy</option>
+        <option value="1.2">Na Wielkanoc, bo babcia pytała</option>
+        <option value="1.6" selected>Przed ślubem, bo trzeba było</option>
+        <option value="2">Przed bierzmowaniem</option>
+        <option value="3">Nigdy, jestem tu przypadkiem</option>
+      </select>
+    </div>
+
+    <div class="cats" id="cats"></div>
+
+    <div class="field" style="margin-top:26px">
+      <label for="extra">Grzechy spoza listy</label>
+      <textarea id="extra" placeholder="Np. zjadłem ostatni kawałek pizzy i zwaliłem na psa"></textarea>
+    </div>
+
+    <div class="bar">
+      <div class="meter">
+        <div class="meter-top">
+          <span class="weight" id="weight">0 g</span>
+          <span class="level" id="level">Anioł</span>
+        </div>
+        <div class="track"><div class="fill" id="fill"></div></div>
+      </div>
+      <button class="btn" id="go2" type="button">Przejdź do przelewu</button>
+    </div>
+    <p class="note" id="note1" hidden></p>
+  </section>
+
+  <!-- KROK 2 -->
+  <section id="s2" hidden>
+    <h2>Przelew grzechów</h2>
+    <p class="sub">Sprawdź dane przelewu. Grzechów nie da się cofnąć, przelewu też nie.</p>
+    <div class="card">
+      <dl class="transfer">
+        <dt>Odbiorca</dt><dd>Niebo S.A., ul. Chmurna 7, 00-777 Raj</dd>
+        <dt>Nr rachunku</dt><dd>PL 77 7777 0000 0000 0000 0000 0777</dd>
+        <dt>Tytuł</dt><dd id="t-title"></dd>
+        <dt>Kwota</dt><dd id="t-amount"></dd>
+        <dt>Prowizja</dt><dd>1× Zdrowaś Maryjo (pobierana z góry)</dd>
+      </dl>
+      <div class="slider">
+        <label for="zal"><span>Poziom żalu za grzechy</span><output id="zal-out">35%</output></label>
+        <input type="range" id="zal" min="0" max="100" value="35">
+        <span class="zal-hint" id="zal-hint"></span>
+      </div>
+      <div class="row">
+        <button class="btn" id="send" type="button">Zatwierdź przelew</button>
+        <button class="btn ghost" id="back1" type="button">Wróć do grzechów</button>
+      </div>
+      <div class="track" id="ptrack" hidden><div class="fill" id="pfill"></div></div>
+      <ul class="log" id="log" hidden></ul>
+    </div>
+  </section>
+
+  <!-- KROK 3 -->
+  <section id="s3" hidden>
+    <h2>Pokuta</h2>
+    <p class="sub">Dobrana indywidualnie przez algorytm parafialny. Odwołania nie przysługują.</p>
+    <ul class="penance" id="penance"></ul>
+
+    <div class="cert" id="cert">
+      <div class="stamp"><div><strong>ROZGRZE­SZONO</strong>Niebo S.A.<br>dział reklamacji</div></div>
+      <h3>Rozgrzeszenie</h3>
+      <p class="no" id="c-no"></p>
+      <p id="c-body"></p>
+      <p id="c-valid"></p>
+      <p class="sign">ks. Proboszcz Online, administrator</p>
+    </div>
+
+    <p class="upsell"><b>Odpust zupełny</b> dostępny w pakiecie Niebo Premium za 49,99 zł/mies. Pierwszy miesiąc gratis dla ministrantów i teściowych. Płatność wyłącznie przez Radio Maryja.</p>
+
+    <div class="row">
+      <button class="btn" id="copy" type="button">Kopiuj rozgrzeszenie</button>
+      <button class="btn ghost" id="again" type="button">Zgrzesz ponownie</button>
+    </div>
+  </section>
+
+  <footer>Strona dla beki. Prawdziwej spowiedzi przez internet nie ma, po rozgrzeszenie trzeba iść do kościoła. Żadne grzechy nie są nigdzie wysyłane ani zapisywane, zostają w Twojej przeglądarce i na Twoim sumieniu.</footer>
+</main>
+
+<script>
+const SINS = [
+  { cat: "Przykazania kościelne", items: [
+    { id: "kazanie", t: "Drzemka na kazaniu", g: 40, pre: true },
+    { id: "komunia", t: "Wyjście z mszy zaraz po komunii, przed błogosławieństwem", g: 90 },
+    { id: "kielbasa", t: "Kiełbasa w piątek", g: 120, p: "W piątek zjedz śledzia. Takiego z octu, bez cebulki." },
+    { id: "taca", t: "2 zł na tacę i w myślach wydana reszta", g: 60 },
+    { id: "koleda", t: "Udawanie, że nikogo nie ma w domu, gdy ksiądz chodzi po kolędzie", g: 150, p: "Przy następnej kolędzie poczęstuj księdza ciastem. I kopertą." },
+    { id: "barka", t: "Na „Barce” tylko ruszanie ustami", g: 30, p: "Zaśpiewaj „Barkę” w całości, w aucie, przy otwartych oknach, na światłach." }
+  ]},
+  { cat: "Codzienność", items: [
+    { id: "korek", t: "„Stoję w korku” do szefa, prosto z łóżka", g: 110 },
+    { id: "wozek", t: "Wózek z Biedronki zostawiony na środku parkingu", g: 70, p: "Przez tydzień odprowadzaj wózki w Biedronce. Także cudze." },
+    { id: "kaucja", t: "Butelka z kaucją wyrzucona do zwykłego kosza", g: 50, p: "Oddaj 40 butelek do automatu kaucyjnego, w godzinach szczytu." },
+    { id: "mama", t: "Odpowiedź „ok” na wiadomość od mamy długą na pół ekranu", g: 80, p: "Zadzwoń do mamy. Teraz. Nie „ok”, tylko zadzwoń." },
+    { id: "windows", t: "„Przypomnij później” przy aktualizacji Windows, 200 razy", g: 45 },
+    { id: "dlugopis", t: "Kradzież długopisu z poczty (tego na sznurku)", g: 65 },
+    { id: "buspas", t: "Buspas, bo „wszyscy jadą”", g: 95 },
+    { id: "pycha", t: "Twierdzenie, że nie ma się żadnych grzechów", g: 300, hidden: true }
+  ]},
+  { cat: "Rodzicielskie", items: [
+    { id: "zabawki", t: "„Sklep z zabawkami jest dziś zamknięty”", g: 85, pre: true },
+    { id: "zelki", t: "Zjedzenie dziecku żelków, gdy spało", g: 100, p: "Oddaj dzieciom podwójną porcję żelków. Z własnych." },
+    { id: "spanie", t: "Udawanie snu, żeby do dziecka wstała druga połowa", g: 140, p: "Trzy kolejne nocne pobudki są Twoje. Bez negocjacji." },
+    { id: "kurde", t: "„Kurde” przy dzieciach, choć w głowie było coś gorszego", g: 55 }
+  ]},
+  { cat: "Dla automatyków", items: [
+    { id: "krancowka", t: "Zmostkowana krańcówka, „tylko na chwilę”", g: 180, p: "Usuń mostek z krańcówki i przeproś ją osobiście." },
+    { id: "backup", t: "Program wgrany na robota bez backupu", g: 130, p: "Zrób backup wszystkich robotów na hali. Dwa razy. Dziś." },
+    { id: "nieruszac", t: "Komentarz w kodzie „NIE RUSZAĆ, DZIAŁA”", g: 40 },
+    { id: "mechanicy", t: "„To wina mechaników” powiedziane klientowi", g: 90, p: "Postaw mechanikom pączki. Każdemu." },
+    { id: "t1", t: "„Uruchomienie zakończone” w raporcie, a robot jeszcze jeździ na T1", g: 110 }
+  ]}
+];
+
+const GENERIC = [
+  "Obejrzyj trzy odcinki „Klanu” pod rząd, bez telefonu w ręku.",
+  "Zadzwoń do teściowej i rozmawiaj 15 minut, nie patrząc na zegarek.",
+  "Wysłuchaj oferty konsultanta sieci komórkowej do samego końca. Grzecznie.",
+  "Idź na roraty. W grudniu. Na 6:00.",
+  "Kup kremówkę i jej nie jedz. Tylko patrz.",
+  "Na najbliższej mszy usiądź w pierwszej ławce.",
+  "Przeczytaj w całości regulamin aktualizacji Windows.",
+  "Przez tydzień pozdrawiaj sąsiada, którego nie znosisz. Z uśmiechem.",
+  "Przejdź pieszo do najbliższej Żabki i z powrotem, odmawiając dziesiątkę różańca.",
+  "Zostań ministrantem na jedną mszę. Wiek nie gra roli.",
+  "Wyłącz na weekend powiadomienia z grupy „Rodzina”. Ale je potem przeczytaj."
+];
+
+const RYDZYK = [
+  "Kup cegiełkę na odwierty geotermalne w Toruniu. Ciepło wróci do Ciebie w życiu wiecznym.",
+  "Zadzwoń na antenę Radia Maryja i pozdrów Ojca Dyrektora oraz całą Rodzinę Radia Maryja ze swojej parafii.",
+  "Wykup roczną prenumeratę „Naszego Dziennika” i czytaj go na głos przy śniadaniu.",
+  "Dorzuć się do nowego Maybacha dla Ojca Dyrektora. Stary ma już prawie dwa lata.",
+  "Obejrzyj cały wieczór Telewizji Trwam. Pilota schowaj do szuflady.",
+  "Jedź z Rodziną Radia Maryja na pielgrzymkę na Jasną Górę. Autokarem, z kanapkami w folii.",
+  "Ustaw Radio Maryja jako budzik na cały tydzień. Głośno.",
+  "Zapisz się do Koła Przyjaciół Radia Maryja i przyprowadź teściową."
+];
+
+const LEVELS = [[1, "Ministrant"], [300, "Przeciętny parafianin"], [900, "Kibic po derbach"], [1600, "Szwagier na weselu"], [2600, "Poseł na Sejm"]];
+
+const $ = id => document.getElementById(id);
+const fast = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = ms => new Promise(r => setTimeout(r, fast ? ms * 0.25 : ms));
+const all = SINS.flatMap(c => c.items);
+
+function render() {
+  $("cats").innerHTML = SINS.map(c => `
+    <fieldset class="cat"><legend>${c.cat}</legend>
+      ${c.items.map(s => `
+        <label class="sin" id="row-${s.id}"${s.hidden ? " hidden" : ""}>
+          <input type="checkbox" id="sin-${s.id}" value="${s.id}"${s.pre ? " checked" : ""}>
+          <span class="t">${s.t}</span><span class="g">${s.g} g</span>
+        </label>`).join("")}
+    </fieldset>`).join("");
+}
+
+function fmt(g) {
+  return g >= 1000 ? (g / 1000).toFixed(2).replace(".", ",") + " kg" : Math.round(g) + " g";
+}
+function grzech(n) {
+  if (n === 1) return "grzech";
+  const d = n % 10, dd = n % 100;
+  return d >= 2 && d <= 4 && (dd < 12 || dd > 14) ? "grzechy" : "grzechów";
+}
+
+function state() {
+  const checked = all.filter(s => $("sin-" + s.id).checked);
+  const extra = $("extra").value.trim();
+  const mult = parseFloat($("last").value);
+  const base = checked.reduce((a, s) => a + s.g, 0) + (extra ? 50 + extra.length * 2 : 0);
+  const n = checked.length + (extra ? 1 : 0);
+  return { checked, extra, n, w: Math.round(base * mult), lastText: $("last").selectedOptions[0].text };
+}
+
+function update() {
+  const { w } = state();
+  $("weight").textContent = fmt(w);
+  let lvl = w === 0 ? "Anioł (podejrzane)" : "";
+  for (const [min, name] of LEVELS) if (w >= min) lvl = name;
+  $("level").textContent = lvl;
+  $("fill").style.width = Math.min(w / 3500, 1) * 100 + "%";
+}
+
+function go(step) {
+  [1, 2, 3].forEach(i => { $("s" + i).hidden = i !== step; });
+  document.querySelectorAll("#steps li").forEach(li => {
+    const i = +li.dataset.step;
+    li.toggleAttribute("aria-current", i === step);
+    if (i === step) li.setAttribute("aria-current", "step");
+    li.classList.toggle("done", i < step);
+  });
+  $("steps").scrollIntoView({ behavior: fast ? "auto" : "smooth" });
+}
+
+function zalHint(z) {
+  if (z < 20) return "Żal na poziomie „no sorry, ale”.";
+  if (z < 60) return "Żal umiarkowany, jak po trzecim kawałku sernika.";
+  if (z < 90) return "Żal szczery. Proboszcz uronił łzę.";
+  return "Żal tak wielki, że aż podejrzany.";
+}
+
+$("go2").addEventListener("click", () => {
+  let s = state();
+  if (s.w === 0) {
+    $("row-pycha").hidden = false;
+    $("sin-pycha").checked = true;
+    $("note1").hidden = false;
+    $("note1").className = "note alarm";
+    $("note1").textContent = "Brak grzechów? Doliczyliśmy grzech pychy. Teraz możesz przejść dalej.";
+    update();
+    return;
+  }
+  $("t-title").textContent = "Grzechy od ostatniej spowiedzi (" + s.lastText.toLowerCase() + ")";
+  $("t-amount").textContent = s.n + " " + grzech(s.n) + ", łącznie " + fmt(s.w);
+  $("log").hidden = true; $("log").innerHTML = "";
+  $("ptrack").hidden = true; $("pfill").style.width = "0";
+  $("send").disabled = false; $("back1").disabled = false;
+  go(2);
+});
+$("back1").addEventListener("click", () => go(1));
+
+$("zal").addEventListener("input", e => {
+  $("zal-out").textContent = e.target.value + "%";
+  $("zal-hint").textContent = zalHint(+e.target.value);
+});
+
+$("send").addEventListener("click", async () => {
+  const s = state();
+  const z = +$("zal").value;
+  $("send").disabled = true; $("back1").disabled = true;
+  $("log").hidden = false; $("ptrack").hidden = false;
+  const lines = [
+    ["Nawiązywanie połączenia z Niebem. Ping: 777 ms."],
+    ["Logowanie przez Anioła Stróża. Kod SMS: 7777. OK."],
+    [`Pakowanie ${s.n} ${grzech(s.n)} do archiwum .zip (kompresja: rachunek sumienia).`],
+    z < 20 ? [`Wykryto ${z}% żalu. Za mało. Pobrano żal zastępczy z puli parafialnej.`, "warn"]
+      : z < 60 ? [`Wykryto ${z}% żalu. Proboszcz westchnął, ale akceptuje.`]
+      : [`Wykryto ${z}% żalu. Szczery. Aniołowie są pod wrażeniem.`],
+    [`Wysyłanie ${fmt(s.w)} grzechu do chmury. Dosłownie.`],
+    ...(s.w > 2000 ? [["Przekroczono limit transferu. Automatycznie dokupiono pakiet „Grzech XL”.", "warn"]] : []),
+    ["Sprawdzanie, czy żaden grzech nie wrócił rykoszetem. Nie wrócił."],
+    ["Kopię przelewu wysłano do wiadomości Ojca Dyrektora w Toruniu."],
+    ["Saldo grzechów: 0,00 g. Przelew zaksięgowany.", "ok"]
+  ];
+  for (let i = 0; i < lines.length; i++) {
+    await sleep(500 + Math.random() * 600);
+    const li = document.createElement("li");
+    li.textContent = lines[i][0];
+    if (lines[i][1]) li.className = lines[i][1];
+    $("log").appendChild(li);
+    $("pfill").style.width = ((i + 1) / lines.length) * 100 + "%";
+  }
+  await sleep(900);
+  buildPenance(s);
+  go(3);
+});
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+let certText = "";
+function buildPenance(s) {
+  const kwota = Math.max(100, Math.round(s.w / 100) * 10);
+  const zdrowas = Math.max(1, Math.ceil(s.w / 150));
+  const total = Math.min(4 + Math.floor(s.w / 500), 9);
+  const list = [`Wpłać ${kwota} zł na Radio Maryja. W tytule: „za grzechy, Ojciec Dyrektor wie jakie”.`];
+  shuffle(s.checked.filter(x => x.p)).slice(0, 3).forEach(x => list.push(x.p));
+  shuffle(RYDZYK).slice(0, s.w > 1000 ? 2 : 1).forEach(t => list.push(t));
+  list.push(`Odmów ${zdrowas}× Zdrowaś Maryjo, w tym jedno w korku na zakopiance.`);
+  for (const g of shuffle(GENERIC)) { if (list.length >= total) break; list.push(g); }
+
+  $("penance").innerHTML = "";
+  list.forEach(t => { const li = document.createElement("li"); li.textContent = t; $("penance").appendChild(li); });
+
+  const now = new Date();
+  const fri = new Date(now);
+  fri.setDate(now.getDate() + (((5 - now.getDay() + 7) % 7) || 7));
+  const dm = d => String(d.getDate()).padStart(2, "0") + "." + String(d.getMonth() + 1).padStart(2, "0");
+  const nr = `ROZ/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${Math.floor(1000 + Math.random() * 9000)}`;
+  const body = `Niniejszym zaświadcza się, że Penitent przelał ${s.n} ${grzech(s.n)} o łącznej masie ${fmt(s.w)} na rachunek Niebo S.A. Przelew zaksięgowano dnia ${dm(now)}.${now.getFullYear()}. Saldo grzechów: 0,00 g.`;
+  const valid = `Ważne do: piątek ${dm(fri)}, godz. 23:59. Kiełbasa unieważnia.`;
+  $("c-no").textContent = "Nr " + nr;
+  $("c-body").textContent = body;
+  $("c-valid").textContent = valid;
+  certText = `ROZGRZESZENIE nr ${nr}\n${body}\n\nPokuta:\n${list.map(t => "- " + t).join("\n")}\n\n${valid}\nks. Proboszcz Online, e-Konfesjonał`;
+}
+
+$("copy").addEventListener("click", () => {
+  const done = () => { $("copy").textContent = "Skopiowano"; setTimeout(() => $("copy").textContent = "Kopiuj rozgrzeszenie", 2000); };
+  const fallback = () => {
+    const r = document.createRange(); r.selectNodeContents($("cert"));
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    $("copy").textContent = "Zaznaczone, skopiuj Ctrl+C";
+  };
+  try { navigator.clipboard.writeText(certText).then(done, fallback); } catch (e) { fallback(); }
+});
+
+$("again").addEventListener("click", () => {
+  all.forEach(s => { $("sin-" + s.id).checked = false; });
+  $("row-pycha").hidden = true;
+  $("extra").value = "";
+  $("note1").hidden = true;
+  update();
+  go(1);
+});
+
+render();
+$("cats").addEventListener("change", update);
+$("extra").addEventListener("input", update);
+$("last").addEventListener("change", update);
+$("zal-hint").textContent = zalHint(35);
+update();
+</script>
+
+</html>
