@@ -137,6 +137,7 @@ input[type="range"] { width: 100%; accent-color: var(--gold); }
 }
 .stamp strong { font-size: 12.5px; display: block; }
 @keyframes stamp { from { transform: rotate(-14deg) scale(2.4); opacity: 0; } to { transform: rotate(-14deg) scale(1); opacity: 1; } }
+.knock { font-family: var(--f-mono); color: var(--gold); font-size: 15px; margin: 0 0 18px; }
 .upsell { border: 1px dashed var(--gold); border-radius: 6px; padding: 12px 14px; color: var(--muted); font-size: 15px; margin: 0 0 20px; }
 .upsell b { color: var(--gold); }
 footer { color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--line); margin-top: 40px; padding-block: 18px 32px; }
@@ -240,6 +241,7 @@ footer { color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--lin
   <section id="s3" hidden>
     <h2>Pokuta</h2>
     <p class="sub">Dobrana indywidualnie przez algorytm parafialny. Odwołania nie przysługują.</p>
+    <p class="knock" id="knock" hidden></p>
     <ul class="penance" id="penance"></ul>
 
     <div class="cert" id="cert">
@@ -338,10 +340,10 @@ const Sound = (() => {
         const comp = ctx.createDynamicsCompressor();
         comp.connect(ctx.destination);
         master = ctx.createGain(); master.gain.value = 0.9; master.connect(comp);
-        // pogłos kościoła: 3,5 s wygasającego szumu
+        // pogłos kościoła: 4,5 s wygasającego szumu
         verb = ctx.createConvolver();
-        const len = Math.floor(ctx.sampleRate * 3.5), ir = ctx.createBuffer(2, len, ctx.sampleRate);
-        for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5); }
+        const len = Math.floor(ctx.sampleRate * 4.5), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+        for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
         verb.buffer = ir;
         const wet = ctx.createGain(); wet.gain.value = 0.5; verb.connect(wet); wet.connect(master);
         noiseBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.2), ctx.sampleRate);
@@ -351,51 +353,115 @@ const Sound = (() => {
       return ctx;
     } catch (e) { return null; }
   }
-  // C, F, G, a, F, G7, C
-  const CHORDS = [[48, 60, 64, 67, 72], [53, 60, 65, 69, 77], [55, 62, 67, 71, 74], [57, 60, 64, 69, 76], [53, 60, 65, 69, 72], [55, 62, 65, 71, 79], [48, 60, 64, 67, 76]];
-  function choir() {
-    if (!init()) return null;
-    const t = ctx.currentTime;
-    const out = ctx.createGain();
-    out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(0.5, t + 1.5);
-    out.connect(master);
-    const send = ctx.createGain(); send.gain.value = 0.9; out.connect(send); send.connect(verb);
-    // formanty samogłoski „aaa”
-    const mix = ctx.createGain(); mix.gain.value = 0.12;
-    [[800, 5, 1], [1150, 7, 0.6], [2900, 9, 0.3]].forEach(([f, q, g]) => {
-      const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = f; bp.Q.value = q;
-      const gg = ctx.createGain(); gg.gain.value = g; mix.connect(bp); bp.connect(gg); gg.connect(out);
+  // 6 głosów (bas, tenor, alty, soprany): C, a, F, Gsus4, G, a na koniec C
+  const CHORDS = [[48, 55, 64, 67, 72, 76], [45, 57, 64, 69, 72, 76], [41, 57, 65, 69, 72, 77], [43, 62, 67, 72, 74, 79], [43, 62, 67, 71, 74, 79], [48, 60, 64, 67, 72, 79]];
+  const n = CHORDS[0].length;
+  const pan = (node, v, dest) => {
+    if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = (v / (n - 1)) * 1.2 - 0.6; node.connect(p); p.connect(dest); }
+    else node.connect(dest);
+  };
+  // Anioły: 6 głosów z formantami „aaa”, każdy z własnym vibrato
+  function angels(dest, t, all) {
+    // barwa: miękki dolnoprzepustowy + podbite formanty samogłoski „aaa”
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 2400; lp.Q.value = 0.5;
+    let chain = lp;
+    [[800, 3, 6], [1150, 4, 4], [2900, 5, 3]].forEach(([f, q, g]) => {
+      const pk = ctx.createBiquadFilter(); pk.type = "peaking"; pk.frequency.value = f; pk.Q.value = q; pk.gain.value = g;
+      chain.connect(pk); chain = pk;
     });
-    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 900;
-    const lg = ctx.createGain(); lg.gain.value = 0.35; mix.connect(lp); lp.connect(lg); lg.connect(out);
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 5.3;
-    const depth = ctx.createGain(); depth.gain.value = 12; lfo.connect(depth); lfo.start(t);
-    const oscs = [];
-    CHORDS[0].forEach(m => [-9, 0, 9].forEach(cents => {
-      const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = mtof(m);
-      o.detune.value = cents + Math.random() * 4 - 2; depth.connect(o.detune);
-      o.connect(mix); o.start(t); oscs.push(o);
-    }));
-    const glide = (chord, now) => oscs.forEach((o, k) => o.frequency.setTargetAtTime(mtof(chord[Math.floor(k / 3)]), now, 0.12));
+    const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 110;
+    chain.connect(hp); hp.connect(dest);
+    const voices = CHORDS[0].map((m, v) => {
+      const vg = ctx.createGain(); const base = v === 0 ? 0.45 : 1; vg.gain.value = base;
+      pan(vg, v, lp);
+      // każdy głos ma własne, wchodzące z opóźnieniem vibrato
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 4.6 + Math.random() * 1.2;
+      const depth = ctx.createGain(); depth.gain.setValueAtTime(0, t); depth.gain.linearRampToValueAtTime(9 + Math.random() * 6, t + 1.5);
+      lfo.connect(depth); lfo.start(t); all.push(lfo);
+      const oscs = [-14, -5, 5, 14].map(c => {
+        const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = mtof(m);
+        o.detune.value = c + Math.random() * 4 - 2; depth.connect(o.detune);
+        const og = ctx.createGain(); og.gain.value = 0.045; o.connect(og); og.connect(vg); o.start(t); all.push(o);
+        return o;
+      });
+      return { vg, oscs, base };
+    });
+    // aureola: cichy sinus oktawę nad sopranem
+    const halo = ctx.createOscillator(); halo.type = "sine"; halo.frequency.value = mtof(CHORDS[0][n - 1] + 12);
+    const hg = ctx.createGain(); hg.gain.value = 0.02; halo.connect(hg); hg.connect(dest); halo.start(t); all.push(halo);
+    return (chord, now) => {
+      voices.forEach((v, k) => {
+        v.oscs.forEach(o => o.frequency.setTargetAtTime(mtof(chord[k]), now, 0.09));
+        // oddech przy zmianie akordu
+        v.vg.gain.cancelScheduledValues(now); v.vg.gain.setValueAtTime(v.vg.gain.value, now);
+        v.vg.gain.linearRampToValueAtTime(v.base * 0.75, now + 0.15);
+        v.vg.gain.linearRampToValueAtTime(v.base, now + 1);
+      });
+      halo.frequency.setTargetAtTime(mtof(chord[n - 1] + 12), now, 0.09);
+    };
+  }
+  // Organy: piszczałki z harmonicznymi, rejestry 8', 4', 2 2/3', bas z 16'
+  function organ(dest, t, all) {
+    const real = new Float32Array([0, 1, 0.55, 0.32, 0.28, 0.14, 0.12, 0.07, 0.06, 0.04, 0.03]);
+    const wave = ctx.createPeriodicWave(real, new Float32Array(real.length));
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 4000; lp.connect(dest);
+    const voices = CHORDS[0].map((m, v) => {
+      const vg = ctx.createGain(); vg.gain.value = 1; pan(vg, v, lp);
+      const ranks = v === 0 ? [[-12, 0.8], [0, 1], [12, 0.4]] : [[0, 1], [12, 0.55], [19, 0.25]];
+      const oscs = ranks.map(([r, g]) => {
+        const o = ctx.createOscillator(); o.setPeriodicWave(wave);
+        o.frequency.value = mtof(m + r); o.detune.value = Math.random() * 3 - 1.5;
+        const og = ctx.createGain(); og.gain.value = 0.05 * g; o.connect(og); og.connect(vg); o.start(t); all.push(o);
+        return { o, r };
+      });
+      return { vg, oscs };
+    });
+    return (chord, now) => voices.forEach((v, k) => {
+      v.oscs.forEach(({ o, r }) => o.frequency.setTargetAtTime(mtof(chord[k] + r), now, 0.008));
+      // krótkie westchnięcie miecha przy zmianie akordu
+      v.vg.gain.cancelScheduledValues(now); v.vg.gain.setValueAtTime(1, now);
+      v.vg.gain.linearRampToValueAtTime(0.85, now + 0.03); v.vg.gain.linearRampToValueAtTime(1, now + 0.12);
+    });
+  }
+  const SOUNDS = { anioly: [[angels, 1]], organy: [[organ, 1]], oba: [[angels, 0.75], [organ, 0.55]] };
+  function choir(type) {
+    if (!init()) return null;
+    if (current) current.stop();
+    const t = ctx.currentTime, all = [];
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(0.35, t + (type === "organy" ? 0.6 : 2));
+    out.connect(master);
+    const send = ctx.createGain(); send.gain.value = 1.1; out.connect(send); send.connect(verb);
+    const setters = (SOUNDS[type] || SOUNDS.oba).map(([fn, g]) => {
+      const lg = ctx.createGain(); lg.gain.value = g; lg.connect(out);
+      return fn(lg, t, all);
+    });
+    const setChord = (chord, now) => setters.forEach(f => f(chord, now));
     let i = 0, stopped = false;
-    const timer = setInterval(() => { i = (i + 1) % CHORDS.length; glide(CHORDS[i], ctx.currentTime); }, 1600);
-    current = { stop() {
+    const timer = setInterval(() => { i = (i + 1) % (CHORDS.length - 1); setChord(CHORDS[i], ctx.currentTime); }, 2000);
+    const me = { stop() {
       if (stopped) return;
-      stopped = true; current = null;
+      stopped = true;
+      if (current === me) current = null;
       clearInterval(timer);
       const now = ctx.currentTime;
-      glide(CHORDS[CHORDS.length - 1], now);
+      setChord(CHORDS[CHORDS.length - 1], now);
       out.gain.cancelScheduledValues(now); out.gain.setValueAtTime(out.gain.value, now);
-      out.gain.exponentialRampToValueAtTime(0.0001, now + 3);
-      oscs.concat(lfo).forEach(o => o.stop(now + 3.1));
+      out.gain.setTargetAtTime(0.0001, now + 1.2, 0.8);
+      all.forEach(o => o.stop(now + 5));
     } };
-    return current;
+    current = me;
+    return me;
+  }
+  function preview(type, sec) {
+    const c = choir(type);
+    if (c) setTimeout(() => c.stop(), sec * 1000);
   }
   function knock() {
     if (!init()) return;
     const t0 = ctx.currentTime + 0.05;
     const send = ctx.createGain(); send.gain.value = 0.25; send.connect(verb);
-    [0, 0.3].forEach(dt => {
+    [0, 0.32, 0.64].forEach(dt => {
       const t = t0 + dt;
       // głuche uderzenie w drewno
       const o = ctx.createOscillator(); o.type = "sine";
@@ -415,7 +481,7 @@ const Sound = (() => {
     });
   }
   function toggle() { on = !on; if (!on && current) current.stop(); return on; }
-  return { choir, knock, toggle };
+  return { choir, knock, toggle, preview };
 })();
 
 const $ = id => document.getElementById(id);
@@ -507,7 +573,7 @@ $("zal").addEventListener("input", e => {
 $("send").addEventListener("click", async () => {
   const s = state();
   const z = +$("zal").value;
-  const choir = Sound.choir();
+  const choir = Sound.choir("organy");
   $("send").disabled = true; $("back1").disabled = true;
   $("log").hidden = false; $("ptrack").hidden = false;
   const lines = [
@@ -535,8 +601,17 @@ $("send").addEventListener("click", async () => {
   await sleep(900);
   buildPenance(s);
   go(3);
-  setTimeout(() => Sound.knock(), 700);
+  setTimeout(() => { Sound.knock(); showKnock(); }, 700);
 });
+
+function showKnock() {
+  const el = $("knock");
+  el.textContent = ""; el.hidden = false;
+  [0, 320, 640].forEach((d, i) => setTimeout(() => {
+    el.textContent += (i ? " " : "") + "Puk.";
+    if (i === 2) el.textContent += " Ksiądz zastukał w konfesjonał. Idź w pokoju.";
+  }, d));
+}
 
 function shuffle(a) {
   a = a.slice();
@@ -586,6 +661,7 @@ $("again").addEventListener("click", () => {
   $("row-pycha").hidden = true;
   $("extra").value = "";
   $("note1").hidden = true;
+  $("knock").hidden = true;
   update();
   go(1);
 });
