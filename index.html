@@ -48,6 +48,9 @@ h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(52px, 12v
 .chip { font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; display: inline-flex; align-items: center; gap: 7px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulse 1.8s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .3; } }
+.chip-btn { cursor: pointer; }
+.chip-btn:hover { color: var(--fg); border-color: var(--gold); }
+.chip-btn[aria-pressed="false"] { text-decoration: line-through; }
 
 /* Kroki */
 .steps { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 0; margin: 26px 0 8px; font-size: 14px; color: var(--muted); }
@@ -159,6 +162,7 @@ footer { color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--lin
       <span class="chip"><span class="dot"></span>Ksiądz online (lekko zaspany)</span>
       <span class="chip">Kolejka: 0 osób</span>
       <span class="chip">Szyfrowanie SSL: Święty Sakrament Lokalny</span>
+      <button class="chip chip-btn" id="snd" type="button" aria-pressed="true">Dźwięk: włączony</button>
     </div>
   </div>
 </header>
@@ -320,6 +324,100 @@ const RYDZYK = [
 
 const LEVELS = [[1, "Ministrant"], [300, "Przeciętny parafianin"], [900, "Kibic po derbach"], [1600, "Szwagier na weselu"], [2600, "Poseł na Sejm"]];
 
+// Dźwięk syntezowany w Web Audio: chór anielski na czas przelewu, pukanie w konfesjonał na koniec
+const Sound = (() => {
+  let ctx, master, verb, noiseBuf, on = true, current = null;
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  function init() {
+    if (!on) return null;
+    try {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+        const comp = ctx.createDynamicsCompressor();
+        comp.connect(ctx.destination);
+        master = ctx.createGain(); master.gain.value = 0.9; master.connect(comp);
+        // pogłos kościoła: 3,5 s wygasającego szumu
+        verb = ctx.createConvolver();
+        const len = Math.floor(ctx.sampleRate * 3.5), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+        for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5); }
+        verb.buffer = ir;
+        const wet = ctx.createGain(); wet.gain.value = 0.5; verb.connect(wet); wet.connect(master);
+        noiseBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.2), ctx.sampleRate);
+        const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+      }
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    } catch (e) { return null; }
+  }
+  // C, F, G, a, F, G7, C
+  const CHORDS = [[48, 60, 64, 67, 72], [53, 60, 65, 69, 77], [55, 62, 67, 71, 74], [57, 60, 64, 69, 76], [53, 60, 65, 69, 72], [55, 62, 65, 71, 79], [48, 60, 64, 67, 76]];
+  function choir() {
+    if (!init()) return null;
+    const t = ctx.currentTime;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(0.5, t + 1.5);
+    out.connect(master);
+    const send = ctx.createGain(); send.gain.value = 0.9; out.connect(send); send.connect(verb);
+    // formanty samogłoski „aaa”
+    const mix = ctx.createGain(); mix.gain.value = 0.12;
+    [[800, 5, 1], [1150, 7, 0.6], [2900, 9, 0.3]].forEach(([f, q, g]) => {
+      const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = f; bp.Q.value = q;
+      const gg = ctx.createGain(); gg.gain.value = g; mix.connect(bp); bp.connect(gg); gg.connect(out);
+    });
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 900;
+    const lg = ctx.createGain(); lg.gain.value = 0.35; mix.connect(lp); lp.connect(lg); lg.connect(out);
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 5.3;
+    const depth = ctx.createGain(); depth.gain.value = 12; lfo.connect(depth); lfo.start(t);
+    const oscs = [];
+    CHORDS[0].forEach(m => [-9, 0, 9].forEach(cents => {
+      const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = mtof(m);
+      o.detune.value = cents + Math.random() * 4 - 2; depth.connect(o.detune);
+      o.connect(mix); o.start(t); oscs.push(o);
+    }));
+    const glide = (chord, now) => oscs.forEach((o, k) => o.frequency.setTargetAtTime(mtof(chord[Math.floor(k / 3)]), now, 0.12));
+    let i = 0, stopped = false;
+    const timer = setInterval(() => { i = (i + 1) % CHORDS.length; glide(CHORDS[i], ctx.currentTime); }, 1600);
+    current = { stop() {
+      if (stopped) return;
+      stopped = true; current = null;
+      clearInterval(timer);
+      const now = ctx.currentTime;
+      glide(CHORDS[CHORDS.length - 1], now);
+      out.gain.cancelScheduledValues(now); out.gain.setValueAtTime(out.gain.value, now);
+      out.gain.exponentialRampToValueAtTime(0.0001, now + 3);
+      oscs.concat(lfo).forEach(o => o.stop(now + 3.1));
+    } };
+    return current;
+  }
+  function knock() {
+    if (!init()) return;
+    const t0 = ctx.currentTime + 0.05;
+    const send = ctx.createGain(); send.gain.value = 0.25; send.connect(verb);
+    [0, 0.3].forEach(dt => {
+      const t = t0 + dt;
+      // głuche uderzenie w drewno
+      const o = ctx.createOscillator(); o.type = "sine";
+      o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.12);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(1, t + 0.003); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      o.connect(g); g.connect(master); g.connect(send);
+      o.start(t); o.stop(t + 0.25);
+      // stuknięcie knykcia
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf;
+      const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1100; bp.Q.value = 1.2;
+      const res = ctx.createBiquadFilter(); res.type = "peaking"; res.frequency.value = 430; res.Q.value = 6; res.gain.value = 14;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(0.8, t + 0.002); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      n.connect(bp); bp.connect(res); res.connect(ng); ng.connect(master); ng.connect(send);
+      n.start(t); n.stop(t + 0.15);
+    });
+  }
+  function toggle() { on = !on; if (!on && current) current.stop(); return on; }
+  return { choir, knock, toggle };
+})();
+
 const $ = id => document.getElementById(id);
 const fast = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const sleep = ms => new Promise(r => setTimeout(r, fast ? ms * 0.25 : ms));
@@ -409,6 +507,7 @@ $("zal").addEventListener("input", e => {
 $("send").addEventListener("click", async () => {
   const s = state();
   const z = +$("zal").value;
+  const choir = Sound.choir();
   $("send").disabled = true; $("back1").disabled = true;
   $("log").hidden = false; $("ptrack").hidden = false;
   const lines = [
@@ -432,9 +531,11 @@ $("send").addEventListener("click", async () => {
     $("log").appendChild(li);
     $("pfill").style.width = ((i + 1) / lines.length) * 100 + "%";
   }
+  if (choir) choir.stop();
   await sleep(900);
   buildPenance(s);
   go(3);
+  setTimeout(() => Sound.knock(), 700);
 });
 
 function shuffle(a) {
@@ -487,6 +588,12 @@ $("again").addEventListener("click", () => {
   $("note1").hidden = true;
   update();
   go(1);
+});
+
+$("snd").addEventListener("click", e => {
+  const on = Sound.toggle();
+  e.currentTarget.setAttribute("aria-pressed", on);
+  e.currentTarget.textContent = "Dźwięk: " + (on ? "włączony" : "wyłączony");
 });
 
 render();
